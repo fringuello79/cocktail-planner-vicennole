@@ -1,13 +1,13 @@
 
-# cocktail_app.py
+# cocktail_planner_vicennole.py
 # Revisione 1.0 - Creatore: ChatGPT x [Utente]
 
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Calcola Ingredienti Cocktail", layout="centered")
+st.set_page_config(page_title="Cocktail Planner Vicennole", layout="centered")
 
-st.title("🍸 Cocktail Planner Elegante")
+st.title("🍸 Cocktail Planner Vicennole")
 st.subheader("Calcola esattamente cosa comprare per la tua serata")
 
 st.markdown("Inserisci il numero di persone e il numero di cocktail a testa, poi scegli le percentuali per ciascun cocktail.")
