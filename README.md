@@ -19,6 +19,7 @@ Cocktail Planner Vicennole è il tuo assistente personale per organizzare eventi
 - ✅ **Checklist Spesa**: Spunta gli ingredienti mentre fai shopping
 - 📝 **Note Personalizzate**: Aggiungi note per ogni ingrediente
 - 💾 **Salvataggio Sessioni**: Riutilizza configurazioni per eventi ricorrenti
+- ☕️ **Donazioni Opzionali**: Supporta lo sviluppatore (iOS version)
 - 📄 **Export PDF**: Porta la lista stampata (Streamlit version)
 
 ## 🚀 Due Versioni Disponibili

@@ -71,6 +71,9 @@ struct ResultsView: View {
                         }
                     }
                     
+                    // Donation Section (Optional)
+                    DonationView()
+                    
                     Divider()
                     
                     // Shopping Checklist

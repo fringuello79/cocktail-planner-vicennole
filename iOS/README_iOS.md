@@ -10,6 +10,7 @@ Applicazione iOS per pianificare cocktail ed eventi, con calcolo automatico degl
 - ✅ Checklist spesa interattiva con note
 - ✅ Salvataggio e caricamento sessioni
 - ✅ Interfaccia nativa iOS in SwiftUI
+- ✅ Sistema donazioni opzionali (StoreKit 2)
 - 🔄 Export PDF (in sviluppo)
 
 ## 📱 Requisiti
@@ -61,13 +62,24 @@ CocktailPlannerVicennole/
 │   ├── CocktailSelectionView.swift    # Selezione cocktail
 │   ├── MainCocktailSelectionView.swift # Cocktail principale
 │   ├── ResultsView.swift              # Risultati e checklist
-│   └── SavedSessionsView.swift        # Gestione sessioni
+│   ├── SavedSessionsView.swift        # Gestione sessioni
+│   └── DonationView.swift             # Donazioni opzionali
 ├── ViewModels/
 │   └── CocktailPlannerViewModel.swift # Logica business
 └── Services/
     ├── CocktailEngine.swift           # Engine calcoli
-    └── SessionManager.swift           # Persistenza dati
+    ├── SessionManager.swift           # Persistenza dati
+    └── DonationManager.swift          # Gestione donazioni (StoreKit)
 ```
+
+## 💰 Sistema Donazioni
+
+L'app include un sistema di donazioni opzionali che permette agli utenti di supportare lo sviluppatore:
+- ☕️ €1 - Offri un caffè
+- ❤️ €3 - Supporta lo sviluppo
+- ⭐ €5 - Grazie per il supporto!
+
+**Setup richiesto:** Vedi [GUIDA_DONAZIONI.md](GUIDA_DONAZIONI.md) per istruzioni complete su come configurare i prodotti in-app in App Store Connect.
 
 ## 📦 Preparazione per App Store
 
