@@ -59,6 +59,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Logo placeholder
+# NOTE: Replace this placeholder with actual logo by:
+# 1. Place "logovicennole.jpg" in the same directory as this script
+# 2. Replace the HTML below with: st.image("logovicennole.jpg", width=120)
 st.markdown("""
 <div class="logo-container">
     <div class="logo-placeholder">
@@ -146,6 +149,12 @@ if 'calculated' not in st.session_state:
     st.session_state.calculated = False
 if 'saved_sessions' not in st.session_state:
     st.session_state.saved_sessions = []
+if 'distribution' not in st.session_state:
+    st.session_state.distribution = {}
+if 'num_people' not in st.session_state:
+    st.session_state.num_people = 10
+if 'drinks_per_person' not in st.session_state:
+    st.session_state.drinks_per_person = 3
 
 # Sidebar for saved sessions
 with st.sidebar:
@@ -190,9 +199,11 @@ with tab1:
     
     col1, col2 = st.columns(2)
     with col1:
-        num_people = st.number_input("👥 Numero di persone", min_value=1, value=10, step=1)
+        num_people = st.number_input("👥 Numero di persone", min_value=1, value=st.session_state.num_people, step=1)
+        st.session_state.num_people = num_people
     with col2:
-        drinks_per_person = st.number_input("🍹 Cocktail a testa", min_value=1, value=3, step=1)
+        drinks_per_person = st.number_input("🍹 Cocktail a testa", min_value=1, value=st.session_state.drinks_per_person, step=1)
+        st.session_state.drinks_per_person = drinks_per_person
     
     total_drinks = num_people * drinks_per_person
     st.info(f"**Totale cocktail da preparare: {total_drinks}**")
@@ -302,6 +313,7 @@ with tab2:
         
         # Display distribution
         st.subheader("📊 Distribuzione Cocktail")
+        total_drinks = st.session_state.num_people * st.session_state.drinks_per_person
         dist_data = []
         for cocktail, num_drinks in st.session_state.distribution.items():
             dist_data.append({
@@ -363,6 +375,11 @@ with tab2:
         st.subheader("📄 Download Lista Spesa")
         
         def create_pdf():
+            # Get values from session state
+            num_people = st.session_state.num_people
+            drinks_per_person = st.session_state.drinks_per_person
+            total_drinks = num_people * drinks_per_person
+            
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=A4,
                                    rightMargin=2*cm, leftMargin=2*cm,
