@@ -19,8 +19,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 st.set_page_config(
     page_title="Cocktail Planner Vicennole",
     page_icon="🍸",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Custom CSS for logo and styling
@@ -135,6 +134,17 @@ RECIPES = {
     "Amaretto Sour": {"Amaretto (ml)": 60, "Lime (ml)": 30},
     "Irish Coffee": {"Whiskey (ml)": 40, "Caffè (ml)": 90, "Zucchero (g)": 10, "Panna (ml)": 30}
 }
+
+# Helper function for formatting quantities
+def format_quantity(ingredient, quantity):
+    """Format ingredient quantity with appropriate unit."""
+    unit = ingredient.split('(')[-1].replace(')', '') if '(' in ingredient else ''
+    if unit in ['ml', 'g']:
+        return f"{quantity:.0f} {unit}"
+    elif unit == 'foglie':
+        return f"{quantity:.0f} {unit}"
+    else:
+        return f"{quantity:.1f}"
 
 # Initialize session state
 if 'selected_cocktails' not in st.session_state:
@@ -349,15 +359,8 @@ with tab2:
                 st.session_state.checklist[ingredient] = checked
             
             with col2:
-                # Format quantity
-                unit = ingredient.split('(')[-1].replace(')', '') if '(' in ingredient else ''
-                if unit in ['ml', 'g']:
-                    formatted_qty = f"{quantity:.0f} {unit}"
-                elif unit == 'foglie':
-                    formatted_qty = f"{quantity:.0f} {unit}"
-                else:
-                    formatted_qty = f"{quantity:.1f}"
-                
+                # Format quantity using helper function
+                formatted_qty = format_quantity(ingredient, quantity)
                 st.markdown(f"**{formatted_qty}**")
             
             with col3:
@@ -447,13 +450,8 @@ with tab2:
             data = [['☐', 'Ingrediente', 'Quantità', 'Note']]
             
             for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-                unit = ingredient.split('(')[-1].replace(')', '') if '(' in ingredient else ''
-                if unit in ['ml', 'g']:
-                    formatted_qty = f"{quantity:.0f} {unit}"
-                elif unit == 'foglie':
-                    formatted_qty = f"{quantity:.0f} {unit}"
-                else:
-                    formatted_qty = f"{quantity:.1f}"
+                # Format quantity using helper function
+                formatted_qty = format_quantity(ingredient, quantity)
                 
                 checkbox = '☑' if st.session_state.checklist.get(ingredient, False) else '☐'
                 note = st.session_state.notes.get(ingredient, "")
