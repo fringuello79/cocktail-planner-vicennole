@@ -33,6 +33,10 @@ if 'notes' not in st.session_state:
     st.session_state.notes = {}
 if 'selected_cocktails' not in st.session_state:
     st.session_state.selected_cocktails = set()
+if 'cocktail_percentages' not in st.session_state:
+    st.session_state.cocktail_percentages = {}
+if 'use_custom_percentages' not in st.session_state:
+    st.session_state.use_custom_percentages = False
 
 # Cocktail Database
 COCKTAIL_CATEGORIES = {
@@ -109,7 +113,7 @@ def format_quantity(value):
     else:
         return f"{value:.1f}"
 
-def calculate_ingredients(people, drinks_per_person, selected_cocktails, distribution_mode, main_cocktail=None):
+def calculate_ingredients(people, drinks_per_person, selected_cocktails, distribution_mode, main_cocktail=None, custom_percentages=None, use_custom_percentages=False):
     """Calculate total ingredients needed"""
     total_drinks = people * drinks_per_person
     n_cocktails = len(selected_cocktails)
@@ -119,25 +123,41 @@ def calculate_ingredients(people, drinks_per_person, selected_cocktails, distrib
     
     # Calculate distribution
     distribution = {}
-    if distribution_mode == "Equa":
-        drinks_per_cocktail = total_drinks / n_cocktails
-        for cocktail in selected_cocktails:
-            distribution[cocktail] = drinks_per_cocktail
-    else:  # "Con cocktail principale"
-        if main_cocktail and main_cocktail in selected_cocktails:
-            main_drinks = total_drinks * 0.5
-            distribution[main_cocktail] = main_drinks
-            
-            remaining_drinks = total_drinks - main_drinks
-            other_cocktails = [c for c in selected_cocktails if c != main_cocktail]
-            if other_cocktails:
-                drinks_per_other = remaining_drinks / len(other_cocktails)
-                for cocktail in other_cocktails:
-                    distribution[cocktail] = drinks_per_other
-        else:
+    
+    # Use custom percentages if enabled and valid
+    if use_custom_percentages and custom_percentages:
+        # Check if we have percentages for all selected cocktails
+        has_all_percentages = all(cocktail in custom_percentages for cocktail in selected_cocktails)
+        if has_all_percentages:
+            total_percentage = sum(custom_percentages.get(c, 0) for c in selected_cocktails)
+            if abs(total_percentage - 100) < 0.01:  # Allow small floating point errors
+                for cocktail in selected_cocktails:
+                    distribution[cocktail] = total_drinks * (custom_percentages[cocktail] / 100)
+            else:
+                # Fall back to selected distribution mode if percentages don't sum to 100
+                use_custom_percentages = False
+    
+    if not use_custom_percentages or not distribution:
+        # Use standard distribution modes
+        if distribution_mode == "Equa":
             drinks_per_cocktail = total_drinks / n_cocktails
             for cocktail in selected_cocktails:
                 distribution[cocktail] = drinks_per_cocktail
+        else:  # "Con cocktail principale"
+            if main_cocktail and main_cocktail in selected_cocktails:
+                main_drinks = total_drinks * 0.5
+                distribution[main_cocktail] = main_drinks
+                
+                remaining_drinks = total_drinks - main_drinks
+                other_cocktails = [c for c in selected_cocktails if c != main_cocktail]
+                if other_cocktails:
+                    drinks_per_other = remaining_drinks / len(other_cocktails)
+                    for cocktail in other_cocktails:
+                        distribution[cocktail] = drinks_per_other
+            else:
+                drinks_per_cocktail = total_drinks / n_cocktails
+                for cocktail in selected_cocktails:
+                    distribution[cocktail] = drinks_per_cocktail
     
     # Calculate ingredients
     ingredients_total = {}
@@ -289,16 +309,75 @@ with tab1:
     st.info(f"📊 Totale drink da preparare: **{people * drinks_per_person}**")
     
     st.markdown("---")
-    st.subheader("🍸 Selezione Cocktail")
+    st.subheader("🔍 Ricerca Cocktail")
+    
+    # Create a flat list of all cocktails for search
+    all_cocktails = []
+    for cocktails in COCKTAIL_CATEGORIES.values():
+        all_cocktails.extend(cocktails)
+    
+    # Search field
+    search_query = st.text_input(
+        "Cerca un cocktail per nome",
+        placeholder="Scrivi il nome del cocktail...",
+        key="cocktail_search"
+    )
+    
+    # Filter cocktails based on search
+    if search_query:
+        filtered_cocktails = [c for c in all_cocktails if search_query.lower() in c.lower()]
+        if filtered_cocktails:
+            st.markdown("**Risultati ricerca:**")
+            search_cols = st.columns(3)
+            for idx, cocktail in enumerate(filtered_cocktails):
+                with search_cols[idx % 3]:
+                    is_selected = cocktail in st.session_state.selected_cocktails
+                    if st.checkbox(
+                        cocktail, 
+                        key=f"search_{cocktail}",
+                        value=is_selected
+                    ):
+                        st.session_state.selected_cocktails.add(cocktail)
+                    else:
+                        st.session_state.selected_cocktails.discard(cocktail)
+        else:
+            st.info("Nessun cocktail trovato")
+    
+    # Display selected cocktails
+    if st.session_state.selected_cocktails:
+        st.markdown("---")
+        st.markdown("### 🍹 Cocktail Selezionati")
+        
+        selected_cols = st.columns(3)
+        for idx, cocktail in enumerate(sorted(st.session_state.selected_cocktails)):
+            with selected_cols[idx % 3]:
+                # Find which category this cocktail belongs to
+                category_name = ""
+                for cat, cocktails in COCKTAIL_CATEGORIES.items():
+                    if cocktail in cocktails:
+                        category_name = cat
+                        break
+                
+                st.markdown(f"**{cocktail}** *({category_name})*")
+                if st.button("❌", key=f"remove_{cocktail}"):
+                    st.session_state.selected_cocktails.discard(cocktail)
+                    st.rerun()
+    
+    st.markdown("---")
+    st.subheader("🍸 Selezione per Categoria")
     
     # Cocktail selection by category
     for category, cocktails in COCKTAIL_CATEGORIES.items():
-        with st.expander(f"**{category}** ({len(cocktails)} cocktail)", expanded=(category == "Aperitivo")):
+        with st.expander(f"**{category}** ({len(cocktails)} cocktail)", expanded=False):
             cols = st.columns(2)
             for idx, cocktail in enumerate(cocktails):
                 with cols[idx % 2]:
-                    if st.checkbox(cocktail, key=f"cocktail_{cocktail}", 
-                                 value=cocktail in st.session_state.selected_cocktails):
+                    is_selected = cocktail in st.session_state.selected_cocktails
+                    if st.checkbox(
+                        cocktail, 
+                        key=f"category_{cocktail}", 
+                        value=is_selected
+                    ):
                         st.session_state.selected_cocktails.add(cocktail)
                     else:
                         st.session_state.selected_cocktails.discard(cocktail)
@@ -308,8 +387,8 @@ with tab1:
     
     distribution_mode = st.radio(
         "Modalità distribuzione:",
-        ["Equa", "Con cocktail principale"],
-        help="Equa: stessa quantità per tutti. Con principale: un cocktail al 50%, altri divisi equamente"
+        ["Equa", "Con cocktail principale", "Personalizzata (%)"],
+        help="Equa: stessa quantità per tutti. Con principale: un cocktail al 50%, altri divisi equamente. Personalizzata: imposta percentuale per ogni cocktail"
     )
     
     main_cocktail = None
@@ -317,6 +396,61 @@ with tab1:
         selected_list = sorted(list(st.session_state.selected_cocktails))
         if selected_list:
             main_cocktail = st.selectbox("Seleziona cocktail principale:", selected_list)
+    
+    # Custom percentage distribution
+    if distribution_mode == "Personalizzata (%)":
+        if st.session_state.selected_cocktails:
+            with st.expander("📊 Imposta Percentuali Personalizzate", expanded=True):
+                st.markdown("*Imposta la percentuale di distribuzione per ogni cocktail selezionato (devono sommare a 100%)*")
+                
+                selected_list = sorted(list(st.session_state.selected_cocktails))
+                
+                # Initialize percentages if not set
+                if not st.session_state.cocktail_percentages:
+                    default_perc = 100 / len(selected_list) if selected_list else 0
+                    for cocktail in selected_list:
+                        st.session_state.cocktail_percentages[cocktail] = default_perc
+                
+                # Add any newly selected cocktails with default percentage
+                for cocktail in selected_list:
+                    if cocktail not in st.session_state.cocktail_percentages:
+                        remaining_cocktails = [c for c in selected_list if c not in st.session_state.cocktail_percentages]
+                        if remaining_cocktails:
+                            st.session_state.cocktail_percentages[cocktail] = 100 / len(selected_list)
+                
+                # Remove unselected cocktails
+                to_remove = [c for c in st.session_state.cocktail_percentages.keys() if c not in selected_list]
+                for cocktail in to_remove:
+                    del st.session_state.cocktail_percentages[cocktail]
+                
+                # Create sliders for each cocktail
+                perc_cols = st.columns(2)
+                for idx, cocktail in enumerate(selected_list):
+                    with perc_cols[idx % 2]:
+                        current_value = st.session_state.cocktail_percentages.get(cocktail, 0)
+                        new_value = st.slider(
+                            cocktail,
+                            min_value=0.0,
+                            max_value=100.0,
+                            value=float(current_value),
+                            step=0.5,
+                            key=f"perc_{cocktail}"
+                        )
+                        st.session_state.cocktail_percentages[cocktail] = new_value
+                
+                # Show total percentage
+                total_perc = sum(st.session_state.cocktail_percentages.values())
+                if abs(total_perc - 100) < 0.01:
+                    st.success(f"✅ Totale: {total_perc:.1f}% - Perfetto!")
+                    st.session_state.use_custom_percentages = True
+                else:
+                    st.error(f"⚠️ Totale: {total_perc:.1f}% - Deve essere 100%!")
+                    st.session_state.use_custom_percentages = False
+        else:
+            st.info("Seleziona almeno un cocktail per impostare le percentuali")
+            st.session_state.use_custom_percentages = False
+    else:
+        st.session_state.use_custom_percentages = False
     
     st.markdown("---")
     
@@ -328,7 +462,9 @@ with tab1:
             ingredients_total, distribution = calculate_ingredients(
                 people, drinks_per_person, 
                 st.session_state.selected_cocktails,
-                distribution_mode, main_cocktail
+                distribution_mode, main_cocktail,
+                st.session_state.cocktail_percentages,
+                st.session_state.use_custom_percentages
             )
             st.session_state.ingredients_total = ingredients_total
             st.session_state.distribution = distribution
