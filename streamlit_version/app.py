@@ -269,7 +269,15 @@ with st.sidebar:
         
         if selected_session and st.button("Carica"):
             session_data = sessions[selected_session]['data']
-            st.session_state.selected_cocktails = set(session_data.get('selected_cocktails', []))
+            loaded_cocktails = set(session_data.get('selected_cocktails', []))
+            st.session_state.selected_cocktails = loaded_cocktails
+            
+            # Sync all checkbox states with loaded cocktails
+            for category, cocktails in COCKTAIL_CATEGORIES.items():
+                for cocktail in cocktails:
+                    checkbox_key = f"checkbox_{cocktail}"
+                    st.session_state[checkbox_key] = cocktail in loaded_cocktails
+            
             st.rerun()
     else:
         st.info("Nessuna sessione salvata")
@@ -297,8 +305,16 @@ with tab1:
             cols = st.columns(2)
             for idx, cocktail in enumerate(cocktails):
                 with cols[idx % 2]:
-                    if st.checkbox(cocktail, key=f"cocktail_{cocktail}", 
-                                 value=cocktail in st.session_state.selected_cocktails):
+                    # Initialize checkbox state from selected_cocktails on first run
+                    checkbox_key = f"checkbox_{cocktail}"
+                    if checkbox_key not in st.session_state:
+                        st.session_state[checkbox_key] = cocktail in st.session_state.selected_cocktails
+                    
+                    # Create checkbox - it will maintain its own state via the key
+                    is_checked = st.checkbox(cocktail, key=checkbox_key)
+                    
+                    # Sync the checkbox state with selected_cocktails
+                    if is_checked:
                         st.session_state.selected_cocktails.add(cocktail)
                     else:
                         st.session_state.selected_cocktails.discard(cocktail)
