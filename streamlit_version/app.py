@@ -405,23 +405,19 @@ with tab1:
                 
                 selected_list = sorted(list(st.session_state.selected_cocktails))
                 
-                # Initialize percentages if not set
-                if not st.session_state.cocktail_percentages:
-                    default_perc = 100 / len(selected_list) if selected_list else 0
-                    for cocktail in selected_list:
-                        st.session_state.cocktail_percentages[cocktail] = default_perc
-                
-                # Add any newly selected cocktails with default percentage
-                for cocktail in selected_list:
-                    if cocktail not in st.session_state.cocktail_percentages:
-                        remaining_cocktails = [c for c in selected_list if c not in st.session_state.cocktail_percentages]
-                        if remaining_cocktails:
-                            st.session_state.cocktail_percentages[cocktail] = 100 / len(selected_list)
-                
-                # Remove unselected cocktails
+                # Initialize or update percentages
+                # Remove unselected cocktails first
                 to_remove = [c for c in st.session_state.cocktail_percentages.keys() if c not in selected_list]
                 for cocktail in to_remove:
                     del st.session_state.cocktail_percentages[cocktail]
+                
+                # Add newly selected cocktails or initialize all if empty
+                newly_added = [c for c in selected_list if c not in st.session_state.cocktail_percentages]
+                if newly_added or not st.session_state.cocktail_percentages:
+                    # Redistribute percentages equally when cocktails are added/removed
+                    default_perc = 100 / len(selected_list) if selected_list else 0
+                    for cocktail in selected_list:
+                        st.session_state.cocktail_percentages[cocktail] = default_perc
                 
                 # Create sliders for each cocktail
                 perc_cols = st.columns(2)
