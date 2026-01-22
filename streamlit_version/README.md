@@ -11,7 +11,7 @@ pip install streamlit reportlab
 ## Avvio
 
 ```bash
-streamlit run vicennole_planner_streamlit.py
+streamlit run app.py
 ```
 
 ## Funzionalità
