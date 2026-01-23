@@ -272,11 +272,13 @@ with st.sidebar:
             loaded_cocktails = set(session_data.get('selected_cocktails', []))
             st.session_state.selected_cocktails = loaded_cocktails
             
-            # Sync all checkbox states with loaded cocktails
+            # Sync all checkbox states with loaded cocktails (both category and search checkboxes)
             for category, cocktails in COCKTAIL_CATEGORIES.items():
                 for cocktail in cocktails:
                     checkbox_key = f"checkbox_{cocktail}"
+                    search_checkbox_key = f"search_checkbox_{cocktail}"
                     st.session_state[checkbox_key] = cocktail in loaded_cocktails
+                    st.session_state[search_checkbox_key] = cocktail in loaded_cocktails
             
             st.rerun()
     else:
@@ -315,12 +317,14 @@ with tab1:
             search_cols = st.columns(3)
             for idx, cocktail in enumerate(filtered_cocktails):
                 with search_cols[idx % 3]:
-                    checkbox_key = f"checkbox_{cocktail}"
-                    if checkbox_key not in st.session_state:
-                        st.session_state[checkbox_key] = cocktail in st.session_state.selected_cocktails
+                    search_checkbox_key = f"search_checkbox_{cocktail}"
+                    # Initialize based on selected_cocktails
+                    if search_checkbox_key not in st.session_state:
+                        st.session_state[search_checkbox_key] = cocktail in st.session_state.selected_cocktails
                     
-                    is_checked = st.checkbox(cocktail, key=checkbox_key)
+                    is_checked = st.checkbox(cocktail, key=search_checkbox_key)
                     
+                    # Sync with selected_cocktails
                     if is_checked:
                         st.session_state.selected_cocktails.add(cocktail)
                     else:
@@ -339,9 +343,13 @@ with tab1:
             with selected_cols[idx % 4]:
                 if st.button(f"❌ {cocktail}", key=f"remove_{cocktail}", use_container_width=True):
                     st.session_state.selected_cocktails.discard(cocktail)
+                    # Clear both checkbox keys
                     checkbox_key = f"checkbox_{cocktail}"
+                    search_checkbox_key = f"search_checkbox_{cocktail}"
                     if checkbox_key in st.session_state:
                         st.session_state[checkbox_key] = False
+                    if search_checkbox_key in st.session_state:
+                        st.session_state[search_checkbox_key] = False
                     st.rerun()
         st.markdown("---")
     
