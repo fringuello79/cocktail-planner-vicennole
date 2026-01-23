@@ -299,9 +299,56 @@ with tab1:
     st.markdown("---")
     st.subheader("🍸 Selezione Cocktail")
     
+    # Search field with autocomplete
+    st.markdown("#### 🔍 Cerca Cocktail")
+    all_cocktails = []
+    for cocktails in COCKTAIL_CATEGORIES.values():
+        all_cocktails.extend(cocktails)
+    
+    search_query = st.text_input("Cerca per nome...", key="search_cocktail", placeholder="Es: Mojito, Negroni...")
+    
+    # Filter and show matching cocktails when user types
+    if search_query:
+        filtered_cocktails = [c for c in all_cocktails if search_query.lower() in c.lower()]
+        if filtered_cocktails:
+            st.markdown("**Risultati ricerca:**")
+            search_cols = st.columns(3)
+            for idx, cocktail in enumerate(filtered_cocktails):
+                with search_cols[idx % 3]:
+                    checkbox_key = f"checkbox_{cocktail}"
+                    if checkbox_key not in st.session_state:
+                        st.session_state[checkbox_key] = cocktail in st.session_state.selected_cocktails
+                    
+                    is_checked = st.checkbox(cocktail, key=checkbox_key)
+                    
+                    if is_checked:
+                        st.session_state.selected_cocktails.add(cocktail)
+                    else:
+                        st.session_state.selected_cocktails.discard(cocktail)
+        else:
+            st.info("Nessun cocktail trovato")
+    
+    st.markdown("---")
+    
+    # Show selected cocktails
+    if st.session_state.selected_cocktails:
+        st.markdown("#### ✅ Cocktail Selezionati")
+        selected_cols = st.columns(4)
+        selected_list = sorted(list(st.session_state.selected_cocktails))
+        for idx, cocktail in enumerate(selected_list):
+            with selected_cols[idx % 4]:
+                if st.button(f"❌ {cocktail}", key=f"remove_{cocktail}", use_container_width=True):
+                    st.session_state.selected_cocktails.discard(cocktail)
+                    checkbox_key = f"checkbox_{cocktail}"
+                    if checkbox_key in st.session_state:
+                        st.session_state[checkbox_key] = False
+                    st.rerun()
+        st.markdown("---")
+    
     # Cocktail selection by category
+    st.markdown("#### 📚 Sfoglia per Categoria")
     for category, cocktails in COCKTAIL_CATEGORIES.items():
-        with st.expander(f"**{category}** ({len(cocktails)} cocktail)", expanded=(category == "Aperitivo")):
+        with st.expander(f"**{category}** ({len(cocktails)} cocktail)", expanded=False):
             cols = st.columns(2)
             for idx, cocktail in enumerate(cocktails):
                 with cols[idx % 2]:
@@ -358,6 +405,12 @@ with tab1:
                     st.session_state.notes[ingredient] = ""
             
             st.success("✅ Calcolo completato! Vai alla tab 'Risultati'")
+            st.markdown("---")
+            st.markdown("""
+                <div style='text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;'>
+                    <h3 style='color: #FF6B35;'>👆 Clicca sulla tab '🛒 Risultati' in alto per vedere la lista spesa</h3>
+                </div>
+            """, unsafe_allow_html=True)
 
 with tab2:
     if st.session_state.calculated:
