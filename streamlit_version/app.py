@@ -300,32 +300,7 @@ with tab1:
     
     search_query = st.text_input("Cerca per nome...", key="search_cocktail", placeholder="Es: Mojito, Negroni...")
     
-    # Filter and show matching cocktails when user types
-    if search_query:
-        filtered_cocktails = [c for c in all_cocktails if search_query.lower() in c.lower()]
-        if filtered_cocktails:
-            st.markdown("**Risultati ricerca:**")
-            search_cols = st.columns(3)
-            for idx, cocktail in enumerate(filtered_cocktails):
-                with search_cols[idx % 3]:
-                    # Use search query in key to force re-creation when search changes
-                    search_checkbox_key = f"search_{search_query}_{cocktail}"
-                    # Always use current state from selected_cocktails
-                    current_value = cocktail in st.session_state.selected_cocktails
-                    
-                    is_checked = st.checkbox(cocktail, value=current_value, key=search_checkbox_key)
-                    
-                    # Sync with selected_cocktails
-                    if is_checked:
-                        st.session_state.selected_cocktails.add(cocktail)
-                    else:
-                        st.session_state.selected_cocktails.discard(cocktail)
-        else:
-            st.info("Nessun cocktail trovato")
-    
-    st.markdown("---")
-    
-    # Show selected cocktails
+    # Show selected cocktails immediately after search field - ALWAYS visible
     if st.session_state.selected_cocktails:
         st.markdown("#### ✅ Cocktail Selezionati")
         selected_cols = st.columns(4)
@@ -336,6 +311,42 @@ with tab1:
                     st.session_state.selected_cocktails.discard(cocktail)
                     st.rerun()
         st.markdown("---")
+    
+    # Clean up old search checkbox keys when search changes
+    if 'last_search_query' not in st.session_state:
+        st.session_state.last_search_query = ""
+    
+    if st.session_state.last_search_query != search_query:
+        # Remove old search checkbox keys
+        keys_to_remove = [k for k in st.session_state.keys() if k.startswith('srch_')]
+        for key in keys_to_remove:
+            del st.session_state[key]
+        st.session_state.last_search_query = search_query
+    
+    # Filter and show matching cocktails when user types
+    if search_query:
+        filtered_cocktails = [c for c in all_cocktails if search_query.lower() in c.lower()]
+        if filtered_cocktails:
+            st.markdown("**Risultati ricerca:**")
+            search_cols = st.columns(3)
+            for idx, cocktail in enumerate(filtered_cocktails):
+                with search_cols[idx % 3]:
+                    # Use unique key that changes with search to avoid conflicts
+                    search_key = f"srch_{search_query}_{idx}_{cocktail}"
+                    # Always initialize from selected_cocktails
+                    current_value = cocktail in st.session_state.selected_cocktails
+                    
+                    is_checked = st.checkbox(cocktail, value=current_value, key=search_key)
+                    
+                    # Sync with selected_cocktails
+                    if is_checked:
+                        st.session_state.selected_cocktails.add(cocktail)
+                    else:
+                        st.session_state.selected_cocktails.discard(cocktail)
+        else:
+            st.info("Nessun cocktail trovato")
+    
+    st.markdown("---")
     
     # Cocktail selection by category
     st.markdown("#### 📚 Sfoglia per Categoria")
