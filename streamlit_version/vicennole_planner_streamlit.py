@@ -22,28 +22,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for logo and styling
+# Custom CSS for styling
 st.markdown("""
 <style>
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        padding: 1rem 0 2rem 0;
-    }
-    .logo-placeholder {
-        width: 120px;
-        height: 120px;
-        background-color: #f0f0f0;
-        border: 2px dashed #cccccc;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        font-size: 14px;
-        color: #666666;
-        text-align: center;
-        padding: 10px;
-    }
     .stButton>button {
         width: 100%;
     }
@@ -57,18 +38,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Logo placeholder
-# NOTE: Replace this placeholder with actual logo by:
-# 1. Place "logovicennole.jpg" in the same directory as this script
-# 2. Replace the HTML below with: st.image("logovicennole.jpg", width=120)
-st.markdown("""
-<div class="logo-container">
-    <div class="logo-placeholder">
-        Logo Placeholder<br/>
-        (logovicennole.jpg)
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# Logo
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.image("logovicennole.jpeg", use_container_width=True)
 
 # Title
 st.title("🍸 Cocktail Planner Vicennole")
