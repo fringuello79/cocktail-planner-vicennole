@@ -331,7 +331,7 @@ if active_tab == TAB_PIANIFICA:
 
 if active_tab == TAB_LISTA_SPESA:
     if not st.session_state.calculated:
-        st.warning("⚠️ Calcola prima gli ingredienti nella tab 'Pianifica'")
+        st.warning("⚠️ Calcola prima gli ingredienti nella sezione 'Pianifica'")
     else:
         st.header("🛒 Lista della Spesa")
         italy_now = datetime.now(ZoneInfo("Europe/Rome"))
@@ -528,7 +528,7 @@ if active_tab == TAB_LISTA_SPESA:
         
         st.divider()
         
-        st.info("💡 Per modificare i parametri o cambiare cocktail, clicca sulla tab '📝 Pianifica' in alto.")
+        st.info("💡 Per modificare i parametri o cambiare cocktail, torna alla sezione '📝 Pianifica' in alto.")
 
 if active_tab == TAB_INFO:
     st.header("ℹ️ Informazioni")
@@ -558,12 +558,12 @@ if active_tab == TAB_INFO:
     
     st.markdown("""
     #### 🚀 Come Usare:
-    1. Vai alla tab **Pianifica**
+    1. Vai alla sezione **Pianifica**
     2. Inserisci numero di persone e cocktail a testa
     3. Scegli la modalità di distribuzione
     4. Seleziona i cocktail desiderati
     5. Clicca su **Calcola Ingredienti**
-    6. Vai alla tab **Lista Spesa** per vedere i risultati
+    6. Vai alla sezione **Lista Spesa** per vedere i risultati
     7. Usa la checklist interattiva durante la spesa
     8. Aggiungi note se necessario
     9. Scarica il PDF per avere la lista stampata
