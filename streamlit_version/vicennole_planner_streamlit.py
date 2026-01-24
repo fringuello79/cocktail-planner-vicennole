@@ -35,11 +35,18 @@ st.markdown("""
         margin-top: 1rem;
         margin-bottom: 0.5rem;
     }
+    /* Responsive title - single line on mobile */
+    h1 {
+        font-size: clamp(1.2rem, 4vw, 2.5rem) !important;
+    }
+    h3 {
+        font-size: clamp(0.8rem, 2.5vw, 1.17rem) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Logo
-col1, col2, col3 = st.columns([1, 2, 1])
+# Logo - reduced to 50% size
+col1, col2, col3 = st.columns([3, 2, 3])
 with col2:
     st.image("logovicennole.jpeg", use_container_width=True)
 
@@ -275,6 +282,11 @@ with tab1:
             st.session_state.distribution = distribution
             
             st.success("✅ Calcolo completato! Vai alla tab 'Lista Spesa' per vedere i risultati.")
+            
+            # Button to navigate to Lista Spesa tab
+            if st.button("📋 Lista della Spesa", type="primary", use_container_width=True):
+                st.session_state.active_tab = "Lista Spesa"
+                st.rerun()
 
 with tab2:
     if not st.session_state.calculated:
@@ -321,7 +333,7 @@ with tab2:
         
         # Display ingredients with checkboxes and notes
         for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-            col1, col2, col3 = st.columns([3, 2, 3])
+            col1, col2, col3 = st.columns([3, 1.5, 3.5])
             
             with col1:
                 checked = st.checkbox(
@@ -332,18 +344,23 @@ with tab2:
                 st.session_state.checklist[ingredient] = checked
             
             with col2:
-                # Format quantity using helper function
+                # Format quantity using helper function - keep on same line
                 formatted_qty = format_quantity(ingredient, quantity)
-                st.markdown(f"**{formatted_qty}**")
+                st.markdown(f"<span style='white-space: nowrap;'><strong>{formatted_qty}</strong></span>", unsafe_allow_html=True)
             
             with col3:
-                note = st.text_input(
-                    "Note",
-                    value=st.session_state.notes.get(ingredient, ""),
-                    key=f"note_{ingredient}",
-                    label_visibility="collapsed"
-                )
-                st.session_state.notes[ingredient] = note
+                # Create a container for inline note label and input
+                note_col1, note_col2 = st.columns([0.5, 4])
+                with note_col1:
+                    st.markdown(f"<span style='font-size: 0.7rem; line-height: 2.5;'>Note:</span>", unsafe_allow_html=True)
+                with note_col2:
+                    note = st.text_input(
+                        "Note",
+                        value=st.session_state.notes.get(ingredient, ""),
+                        key=f"note_{ingredient}",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.notes[ingredient] = note
         
         st.divider()
         
@@ -471,6 +488,13 @@ with tab2:
             type="primary",
             use_container_width=True
         )
+        
+        st.divider()
+        
+        # Button to go back to Pianifica tab
+        if st.button("📝 Torna a Pianifica", type="secondary", use_container_width=True):
+            st.session_state.active_tab = "Pianifica"
+            st.rerun()
 
 with tab3:
     st.header("ℹ️ Informazioni")
