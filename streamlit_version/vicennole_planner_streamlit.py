@@ -43,15 +43,15 @@ st.markdown("""
     h3 {
         font-size: clamp(0.8rem, 2.5vw, 1.17rem) !important;
     }
-    .ingredient-list [data-testid="stCheckbox"] label {
+    .ingredient-list {
+        overflow-x: auto;
+    }
+    .ingredient-list label {
         white-space: nowrap;
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
         text-align: left;
-    }
-    .ingredient-list [data-testid="stCheckbox"] {
-        overflow-x: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -126,6 +126,8 @@ RECIPES = {
     "Irish Coffee": {"Whiskey (ml)": 40, "Caffè (ml)": 90, "Zucchero (g)": 10, "Panna (ml)": 30}
 }
 
+TAB_LABELS = ["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"]
+
 # Helper function for formatting quantities
 def format_quantity(ingredient, quantity):
     """Format ingredient quantity with appropriate unit."""
@@ -156,8 +158,6 @@ if 'num_people' not in st.session_state:
     st.session_state.num_people = 10
 if 'drinks_per_person' not in st.session_state:
     st.session_state.drinks_per_person = 3
-if 'jump_to_list' not in st.session_state:
-    st.session_state.jump_to_list = False
 
 # Sidebar for saved sessions
 with st.sidebar:
@@ -195,7 +195,7 @@ with st.sidebar:
                 st.error("Inserisci un nome per la sessione")
 
 # Main content
-tab1, tab2, tab3 = st.tabs(["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"])
+tab1, tab2, tab3 = st.tabs(TAB_LABELS)
 
 with tab1:
     st.header("1️⃣ Parametri Evento")
@@ -320,21 +320,27 @@ with tab1:
 
     if st.session_state.calculated:
         if st.button("🛒 Vai alla Lista Spesa", use_container_width=True):
-            st.session_state.jump_to_list = True
-        if st.session_state.jump_to_list:
+            list_tab_label = TAB_LABELS[1]
+            list_tab_label_json = json.dumps(list_tab_label)
+            script = (
+                "<script>"
+                f"const targetLabel = {list_tab_label_json};"
+                "const retryDelays = [0, 200, 600]; // Allow time for tab elements to render"
+                "const clickListTab = () => {"
+                "const parentDoc = window.parent && window.parent.document ? window.parent.document : null;"
+                "if (!parentDoc) { return false; }"
+                "const tabs = Array.from(parentDoc.querySelectorAll('button[role=\"tab\"]'));"
+                "const target = tabs.find(tab => tab.innerText.trim() === targetLabel);"
+                "if (target) { target.click(); return true; }"
+                "return false;"
+                "};"
+                "retryDelays.forEach(delay => setTimeout(clickListTab, delay));"
+                "</script>"
+            )
             components.html(
-                """
-                <script>
-                const tabs = window.parent.document.querySelectorAll('button[role="tab"]');
-                const target = Array.from(tabs).find(tab => tab.innerText.includes('Lista Spesa'));
-                if (target) {
-                    target.click();
-                }
-                </script>
-                """,
+                script,
                 height=0
             )
-            st.session_state.jump_to_list = False
 
 with tab2:
     if not st.session_state.calculated:
