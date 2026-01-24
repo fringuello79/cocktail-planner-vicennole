@@ -127,6 +127,8 @@ RECIPES = {
 }
 
 TAB_LABELS = ["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"]
+TAB_JUMP_RETRY_DELAY_MS = 200
+TAB_JUMP_MAX_ATTEMPTS = 12
 
 # Helper function for formatting quantities
 def format_quantity(ingredient, quantity):
@@ -325,29 +327,36 @@ with tab1:
             script = f"""
             <script>
             const targetLabel = {list_tab_label_json};
-            const maxAttempts = 12;
-            let attempts = 0;
+            const retryDelayMs = {TAB_JUMP_RETRY_DELAY_MS};
+            const maxAttempts = {TAB_JUMP_MAX_ATTEMPTS}; // Retry mechanism for tab activation
             const clickListTab = () => {{
-                const parentDoc = window.top && window.top.document
-                    ? window.top.document
-                    : (window.parent && window.parent.document ? window.parent.document : null);
+                const parentDoc = (window.top && window.top.document)
+                    || (window.parent && window.parent.document)
+                    || null;
                 if (!parentDoc) {{
                     return false;
                 }}
                 const tabs = Array.from(parentDoc.querySelectorAll('button[role="tab"]'));
-                const target = tabs.find(tab => tab.innerText.includes(targetLabel));
+                const target = tabs.find(tab => tab.innerText.trim() === targetLabel);
                 if (target) {{
                     target.click();
                     return true;
                 }}
                 return false;
             }};
-            const intervalId = setInterval(() => {{
-                attempts += 1;
-                if (clickListTab() || attempts >= maxAttempts) {{
-                    clearInterval(intervalId);
-                }}
-            }}, 200);
+            if (!clickListTab()) {{
+                let attempts = 1;
+                const intervalId = setInterval(() => {{
+                    if (clickListTab()) {{
+                        clearInterval(intervalId);
+                        return;
+                    }}
+                    attempts += 1;
+                    if (attempts >= maxAttempts) {{
+                        clearInterval(intervalId);
+                    }}
+                }}, retryDelayMs);
+            }}
             </script>
             """
             components.html(script, height=0)
