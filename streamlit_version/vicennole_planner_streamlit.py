@@ -4,10 +4,10 @@ Streamlit version with all features from iOS app
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -127,8 +127,7 @@ RECIPES = {
 }
 
 TAB_LABELS = ["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"]
-TAB_JUMP_RETRY_DELAY_MS = 200
-TAB_JUMP_MAX_ATTEMPTS = 12
+TAB_PIANIFICA, TAB_LISTA_SPESA, TAB_INFO = TAB_LABELS
 
 # Helper function for formatting quantities
 def format_quantity(ingredient, quantity):
@@ -160,6 +159,8 @@ if 'num_people' not in st.session_state:
     st.session_state.num_people = 10
 if 'drinks_per_person' not in st.session_state:
     st.session_state.drinks_per_person = 3
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = TAB_PIANIFICA
 
 # Sidebar for saved sessions
 with st.sidebar:
@@ -197,9 +198,15 @@ with st.sidebar:
                 st.error("Inserisci un nome per la sessione")
 
 # Main content
-tab1, tab2, tab3 = st.tabs(TAB_LABELS)
+active_tab = st.radio(
+    "Sezione",
+    TAB_LABELS,
+    index=TAB_LABELS.index(st.session_state.active_tab),
+    horizontal=True
+)
+st.session_state.active_tab = active_tab
 
-with tab1:
+if active_tab == TAB_PIANIFICA:
     st.header("1️⃣ Parametri Evento")
     
     col1, col2 = st.columns(2)
@@ -231,19 +238,6 @@ with tab1:
     main_cocktail = None
     main_cocktail_percentage = 50
     
-    if distribution_mode == "Con cocktail principale":
-        col1, col2 = st.columns(2)
-        with col1:
-            all_cocktails = []
-            for category in COCKTAIL_CATALOG.values():
-                all_cocktails.extend(category)
-            main_cocktail = st.selectbox("Cocktail principale:", sorted(all_cocktails))
-            # Add main cocktail to selection set
-            if main_cocktail:
-                st.session_state.selected_cocktails_set.add(main_cocktail)
-        with col2:
-            main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
-    
     st.divider()
     
     # Cocktail selection by category
@@ -270,6 +264,16 @@ with tab1:
     # Store the list of selected cocktails
     st.session_state.selected_cocktails = selected_cocktails
     
+    if distribution_mode == "Con cocktail principale":
+        if selected_cocktails:
+            col1, col2 = st.columns(2)
+            with col1:
+                main_cocktail = st.selectbox("Cocktail principale:", sorted(selected_cocktails))
+            with col2:
+                main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
+        else:
+            st.info("Seleziona i cocktail per scegliere quello principale.")
+
     # Display selected cocktails summary - show what's actually selected
     if st.session_state.selected_cocktails:
         st.markdown("**Cocktail selezionati:**")
@@ -322,50 +326,15 @@ with tab1:
 
     if st.session_state.calculated:
         if st.button("🛒 Vai alla Lista Spesa", use_container_width=True):
-            list_tab_label = TAB_LABELS[1]
-            list_tab_label_json = json.dumps(list_tab_label)
-            script = f"""
-            <script>
-            const targetLabel = {list_tab_label_json};
-            const retryDelayMs = {TAB_JUMP_RETRY_DELAY_MS};
-            const maxAttempts = {TAB_JUMP_MAX_ATTEMPTS}; // Retry mechanism for tab activation
-            const clickListTab = () => {{
-                const parentDoc = (window.top && window.top.document)
-                    || (window.parent && window.parent.document)
-                    || null;
-                if (!parentDoc) {{
-                    return false;
-                }}
-                const tabs = Array.from(parentDoc.querySelectorAll('button[role="tab"]'));
-                const target = tabs.find(tab => tab.innerText.trim() === targetLabel);
-                if (target) {{
-                    target.click();
-                    return true;
-                }}
-                return false;
-            }};
-            if (!clickListTab()) {{
-                let attempts = 1;
-                const intervalId = setInterval(() => {{
-                    if (clickListTab()) {{
-                        clearInterval(intervalId);
-                        return;
-                    }}
-                    attempts += 1;
-                    if (attempts >= maxAttempts) {{
-                        clearInterval(intervalId);
-                    }}
-                }}, retryDelayMs);
-            }}
-            </script>
-            """
-            components.html(script, height=0)
+            st.session_state.active_tab = TAB_LISTA_SPESA
+            st.rerun()
 
-with tab2:
+if active_tab == TAB_LISTA_SPESA:
     if not st.session_state.calculated:
         st.warning("⚠️ Calcola prima gli ingredienti nella tab 'Pianifica'")
     else:
         st.header("🛒 Lista della Spesa")
+        italy_now = datetime.now(ZoneInfo("Europe/Rome"))
         
         # Summary
         col1, col2, col3 = st.columns(3)
@@ -463,7 +432,7 @@ with tab2:
             
             # Event info
             info_style = styles['Normal']
-            elements.append(Paragraph(f"<b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}", info_style))
+            elements.append(Paragraph(f"<b>Data:</b> {italy_now.strftime('%d/%m/%Y %H:%M')}", info_style))
             elements.append(Paragraph(f"<b>Persone:</b> {num_people}", info_style))
             elements.append(Paragraph(f"<b>Cocktail a testa:</b> {drinks_per_person}", info_style))
             elements.append(Paragraph(f"<b>Totale cocktail:</b> {total_drinks}", info_style))
@@ -551,7 +520,7 @@ with tab2:
         st.download_button(
             label="📥 Scarica Lista Spesa (PDF)",
             data=pdf_buffer,
-            file_name=f"lista_spesa_vicennole_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            file_name=f"lista_spesa_vicennole_{italy_now.strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf",
             type="primary",
             use_container_width=True
@@ -561,7 +530,7 @@ with tab2:
         
         st.info("💡 Per modificare i parametri o cambiare cocktail, clicca sulla tab '📝 Pianifica' in alto.")
 
-with tab3:
+if active_tab == TAB_INFO:
     st.header("ℹ️ Informazioni")
     
     st.markdown("""
