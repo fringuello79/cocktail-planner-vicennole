@@ -219,8 +219,25 @@ with tab1:
             for category in COCKTAIL_CATALOG.values():
                 all_cocktails.extend(category)
             main_cocktail = st.selectbox("Cocktail principale:", sorted(all_cocktails))
+            # Initialize selected_cocktails_set in session state if not present
+            if 'selected_cocktails_set' not in st.session_state:
+                st.session_state.selected_cocktails_set = set()
+            # Add main cocktail to selection
+            if main_cocktail:
+                st.session_state.selected_cocktails_set.add(main_cocktail)
         with col2:
             main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
+    else:
+        # If switching back to equa, remove the flag
+        main_cocktail = None
+    
+    # Display selected cocktails summary
+    if 'selected_cocktails_set' not in st.session_state:
+        st.session_state.selected_cocktails_set = set()
+    
+    if st.session_state.selected_cocktails_set:
+        st.markdown("**Cocktail selezionati:**")
+        st.markdown(", ".join(sorted(st.session_state.selected_cocktails_set)))
     
     st.divider()
     
@@ -233,8 +250,19 @@ with tab1:
         
         for idx, cocktail in enumerate(cocktails):
             with cols[idx % len(cols)]:
-                if st.checkbox(cocktail, key=f"cocktail_{cocktail}"):
+                # Check if cocktail should be pre-selected (from main cocktail or previous selection)
+                is_checked = cocktail in st.session_state.selected_cocktails_set
+                checked = st.checkbox(cocktail, value=is_checked, key=f"cocktail_{cocktail}")
+                
+                if checked:
                     selected_cocktails.append(cocktail)
+                    st.session_state.selected_cocktails_set.add(cocktail)
+                else:
+                    # If unchecked, remove from set
+                    st.session_state.selected_cocktails_set.discard(cocktail)
+                    # If main cocktail is deselected, switch to equal distribution
+                    if distribution_mode == "Con cocktail principale" and cocktail == main_cocktail:
+                        distribution_mode = "Equa tra cocktail selezionati"
     
     st.session_state.selected_cocktails = selected_cocktails
     
@@ -283,10 +311,32 @@ with tab1:
             
             st.success("✅ Calcolo completato! Vai alla tab 'Lista Spesa' per vedere i risultati.")
             
+            # JavaScript to switch tabs
+            st.markdown("""
+                <script>
+                function switchToListaSpesa() {
+                    const tabs = parent.document.querySelectorAll('[role="tab"]');
+                    tabs.forEach(tab => {
+                        if (tab.textContent.includes('Lista Spesa')) {
+                            tab.click();
+                        }
+                    });
+                }
+                </script>
+            """, unsafe_allow_html=True)
+            
             # Button to navigate to Lista Spesa tab
-            if st.button("📋 Lista della Spesa", type="primary", use_container_width=True):
-                st.session_state.active_tab = "Lista Spesa"
-                st.rerun()
+            if st.button("📋 Vai a Lista della Spesa", type="primary", use_container_width=True, key="goto_lista"):
+                st.markdown("""
+                    <script>
+                    const tabs = parent.document.querySelectorAll('[role="tab"]');
+                    tabs.forEach(tab => {
+                        if (tab.textContent.includes('Lista Spesa')) {
+                            tab.click();
+                        }
+                    });
+                    </script>
+                """, unsafe_allow_html=True)
 
 with tab2:
     if not st.session_state.calculated:
@@ -333,11 +383,12 @@ with tab2:
         
         # Display ingredients with checkboxes and notes
         for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-            col1, col2, col3 = st.columns([3, 1.5, 3.5])
+            col1, col2, col3 = st.columns([2.5, 1.5, 4])
             
             with col1:
+                # Display ingredient name with checkbox inline
                 checked = st.checkbox(
-                    ingredient,
+                    ingredient.split('(')[0].strip(),  # Show only ingredient name without unit
                     value=st.session_state.checklist.get(ingredient, False),
                     key=f"check_{ingredient}"
                 )
@@ -346,13 +397,13 @@ with tab2:
             with col2:
                 # Format quantity using helper function - keep on same line
                 formatted_qty = format_quantity(ingredient, quantity)
-                st.markdown(f"<span style='white-space: nowrap;'><strong>{formatted_qty}</strong></span>", unsafe_allow_html=True)
+                st.markdown(f"<div style='white-space: nowrap; padding-top: 8px;'><strong>{formatted_qty}</strong></div>", unsafe_allow_html=True)
             
             with col3:
                 # Create a container for inline note label and input
-                note_col1, note_col2 = st.columns([0.5, 4])
+                note_col1, note_col2 = st.columns([0.6, 4])
                 with note_col1:
-                    st.markdown(f"<span style='font-size: 0.7rem; line-height: 2.5;'>Note:</span>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='font-size: 0.7rem; padding-top: 12px;'>Note:</div>", unsafe_allow_html=True)
                 with note_col2:
                     note = st.text_input(
                         "Note",
@@ -492,9 +543,17 @@ with tab2:
         st.divider()
         
         # Button to go back to Pianifica tab
-        if st.button("📝 Torna a Pianifica", type="secondary", use_container_width=True):
-            st.session_state.active_tab = "Pianifica"
-            st.rerun()
+        if st.button("📝 Torna a Pianifica", type="secondary", use_container_width=True, key="goto_pianifica"):
+            st.markdown("""
+                <script>
+                const tabs = parent.document.querySelectorAll('[role="tab"]');
+                tabs.forEach(tab => {
+                    if (tab.textContent.includes('Pianifica')) {
+                        tab.click();
+                    }
+                });
+                </script>
+            """, unsafe_allow_html=True)
 
 with tab3:
     st.header("ℹ️ Informazioni")
