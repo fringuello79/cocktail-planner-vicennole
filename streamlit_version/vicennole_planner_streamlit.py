@@ -4,6 +4,7 @@ Streamlit version with all features from iOS app
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import json
 from datetime import datetime
@@ -41,6 +42,16 @@ st.markdown("""
     }
     h3 {
         font-size: clamp(0.8rem, 2.5vw, 1.17rem) !important;
+    }
+    .ingredient-list [data-testid="stCheckbox"] label {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+    }
+    .ingredient-list [data-testid="stCheckbox"] {
+        overflow-x: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -145,6 +156,8 @@ if 'num_people' not in st.session_state:
     st.session_state.num_people = 10
 if 'drinks_per_person' not in st.session_state:
     st.session_state.drinks_per_person = 3
+if 'jump_to_list' not in st.session_state:
+    st.session_state.jump_to_list = False
 
 # Sidebar for saved sessions
 with st.sidebar:
@@ -229,11 +242,6 @@ with tab1:
         with col2:
             main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
     
-    # Display selected cocktails summary - show what's actually in the set
-    if st.session_state.selected_cocktails_set:
-        st.markdown("**Cocktail selezionati:**")
-        st.markdown(", ".join(sorted(st.session_state.selected_cocktails_set)))
-    
     st.divider()
     
     # Cocktail selection by category
@@ -259,6 +267,11 @@ with tab1:
     
     # Store the list of selected cocktails
     st.session_state.selected_cocktails = selected_cocktails
+    
+    # Display selected cocktails summary - show what's actually selected
+    if st.session_state.selected_cocktails:
+        st.markdown("**Cocktail selezionati:**")
+        st.markdown(", ".join(sorted(st.session_state.selected_cocktails)))
     
     st.divider()
     
@@ -303,7 +316,25 @@ with tab1:
             st.session_state.calculated = True
             st.session_state.distribution = distribution
             
-            st.success("✅ Calcolo completato! Clicca sulla tab '🛒 Lista Spesa' in alto per vedere i risultati.")
+            st.success("✅ Calcolo completato! Usa il pulsante qui sotto o la tab '🛒 Lista Spesa' per vedere i risultati.")
+
+    if st.session_state.calculated:
+        if st.button("🛒 Vai alla Lista Spesa", use_container_width=True):
+            st.session_state.jump_to_list = True
+        if st.session_state.jump_to_list:
+            components.html(
+                """
+                <script>
+                const tabs = window.parent.document.querySelectorAll('button[role="tab"]');
+                const target = Array.from(tabs).find(tab => tab.innerText.includes('Lista Spesa'));
+                if (target) {
+                    target.click();
+                }
+                </script>
+                """,
+                height=0
+            )
+            st.session_state.jump_to_list = False
 
 with tab2:
     if not st.session_state.calculated:
@@ -349,29 +380,18 @@ with tab2:
         st.markdown("---")
         
         # Display ingredients with checkboxes and notes
+        st.markdown('<div class="ingredient-list">', unsafe_allow_html=True)
         for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-            # Row 1: Checkbox, ingredient name, and quantity all on same line
-            col1, col2, col3 = st.columns([0.5, 2, 1.5])
+            ingredient_name = ingredient.split('(')[0].strip()
+            formatted_qty = format_quantity(ingredient, quantity)
+            label = f"{ingredient_name} - {formatted_qty}"
             
-            with col1:
-                # Checkbox only
-                checked = st.checkbox(
-                    "",  # Empty label for checkbox only
-                    value=st.session_state.checklist.get(ingredient, False),
-                    key=f"check_{ingredient}",
-                    label_visibility="collapsed"
-                )
-                st.session_state.checklist[ingredient] = checked
-            
-            with col2:
-                # Ingredient name
-                ingredient_name = ingredient.split('(')[0].strip()
-                st.markdown(f"<div style='padding-top: 8px;'><strong>{ingredient_name}</strong></div>", unsafe_allow_html=True)
-            
-            with col3:
-                # Quantity with unit on same line
-                formatted_qty = format_quantity(ingredient, quantity)
-                st.markdown(f"<div style='padding-top: 8px; white-space: nowrap;'>{formatted_qty}</div>", unsafe_allow_html=True)
+            checked = st.checkbox(
+                label,
+                value=st.session_state.checklist.get(ingredient, False),
+                key=f"check_{ingredient}"
+            )
+            st.session_state.checklist[ingredient] = checked
             
             # Row 2: Notes on separate row, full width
             note = st.text_input(
@@ -383,6 +403,7 @@ with tab2:
             )
             st.session_state.notes[ingredient] = note
             st.markdown("---")
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.divider()
         
