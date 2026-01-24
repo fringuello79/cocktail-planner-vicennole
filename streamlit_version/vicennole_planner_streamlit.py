@@ -7,6 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import json
+import time
 from datetime import datetime
 from io import BytesIO
 from reportlab.lib import colors
@@ -320,29 +321,14 @@ with tab1:
 
     if st.session_state.calculated:
         if st.button("🛒 Vai alla Lista Spesa", use_container_width=True):
-            list_tab_label = TAB_LABELS[1]
-            list_tab_label_json = json.dumps(list_tab_label)
-            script = (
-                "<script>"
-                f"const targetLabel = {list_tab_label_json};"
-                "const retryDelays = [0, 200, 600]; // Allow time for tab elements to render"
-                "const clickListTab = () => {"
-                "const parentDoc = window.parent && window.parent.document ? window.parent.document : null;"
-                "if (!parentDoc) { return false; }"
-                "const tabs = Array.from(parentDoc.querySelectorAll('button[role=\"tab\"]'));"
-                "const target = tabs.find(tab => tab.innerText.trim() === targetLabel);"
-                "if (target) { target.click(); return true; }"
-                "return false;"
-                "};"
-                "retryDelays.forEach(delay => setTimeout(clickListTab, delay));"
-                "</script>"
-            )
-            components.html(
-                script,
-                height=0
-            )
+            st.session_state.active_tab = TAB_LABELS[1]
+            st.rerun()
 
 with tab2:
+    if st.session_state.get("active_tab") == TAB_LABELS[1]:
+        st.session_state.active_tab = TAB_LABELS[0]
+        time.sleep(0.1)
+        st.rerun()
     if not st.session_state.calculated:
         st.warning("⚠️ Calcola prima gli ingredienti nella tab 'Pianifica'")
     else:
