@@ -202,6 +202,10 @@ with tab1:
     
     st.header("2️⃣ Selezione Cocktail")
     
+    # Initialize selected_cocktails_set in session state if not present
+    if 'selected_cocktails_set' not in st.session_state:
+        st.session_state.selected_cocktails_set = set()
+    
     # Distribution preset
     distribution_mode = st.radio(
         "Modalità distribuzione:",
@@ -211,10 +215,6 @@ with tab1:
     
     main_cocktail = None
     main_cocktail_percentage = 50
-    
-    # Initialize selected_cocktails_set in session state if not present
-    if 'selected_cocktails_set' not in st.session_state:
-        st.session_state.selected_cocktails_set = set()
     
     if distribution_mode == "Con cocktail principale":
         col1, col2 = st.columns(2)
@@ -228,11 +228,8 @@ with tab1:
                 st.session_state.selected_cocktails_set.add(main_cocktail)
         with col2:
             main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
-    else:
-        # If switching back to equa, don't force any specific cocktail
-        main_cocktail = None
     
-    # Display selected cocktails summary
+    # Display selected cocktails summary - show what's actually in the set
     if st.session_state.selected_cocktails_set:
         st.markdown("**Cocktail selezionati:**")
         st.markdown(", ".join(sorted(st.session_state.selected_cocktails_set)))
@@ -248,10 +245,11 @@ with tab1:
         
         for idx, cocktail in enumerate(cocktails):
             with cols[idx % len(cols)]:
-                # Check if cocktail should be pre-selected
+                # Check if cocktail is in the set
                 is_checked = cocktail in st.session_state.selected_cocktails_set
                 checked = st.checkbox(cocktail, value=is_checked, key=f"cocktail_{cocktail}")
                 
+                # Update the set based on checkbox state
                 if checked:
                     selected_cocktails.append(cocktail)
                     st.session_state.selected_cocktails_set.add(cocktail)
@@ -259,6 +257,7 @@ with tab1:
                     # If unchecked, remove from set
                     st.session_state.selected_cocktails_set.discard(cocktail)
     
+    # Store the list of selected cocktails
     st.session_state.selected_cocktails = selected_cocktails
     
     st.divider()
@@ -304,21 +303,7 @@ with tab1:
             st.session_state.calculated = True
             st.session_state.distribution = distribution
             
-            st.success("✅ Calcolo completato! Vai alla tab 'Lista Spesa' per vedere i risultati.")
-    
-    # Add bottom navigation
-    st.divider()
-    st.markdown("#### Navigazione")
-    bottom_tabs1 = st.tabs(["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"])
-    with bottom_tabs1[0]:
-        st.info("Sei già nella sezione Pianifica")
-    with bottom_tabs1[1]:
-        if st.session_state.calculated:
-            st.success("Clicca qui per vedere la Lista Spesa con gli ingredienti calcolati")
-        else:
-            st.warning("Calcola prima gli ingredienti")
-    with bottom_tabs1[2]:
-        st.info("Informazioni sull'applicazione")
+            st.success("✅ Calcolo completato! Clicca sulla tab '🛒 Lista Spesa' in alto per vedere i risultati.")
 
 with tab2:
     if not st.session_state.calculated:
@@ -365,25 +350,30 @@ with tab2:
         
         # Display ingredients with checkboxes and notes
         for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-            # Single row layout for mobile-friendly display
-            col1, col2 = st.columns([1, 3])
+            # Row 1: Checkbox, ingredient name, and quantity all on same line
+            col1, col2, col3 = st.columns([0.5, 2, 1.5])
             
             with col1:
-                # Checkbox with just the ingredient name
-                ingredient_name = ingredient.split('(')[0].strip()
+                # Checkbox only
                 checked = st.checkbox(
-                    "",  # Empty label, we'll display it custom
+                    "",  # Empty label for checkbox only
                     value=st.session_state.checklist.get(ingredient, False),
-                    key=f"check_{ingredient}"
+                    key=f"check_{ingredient}",
+                    label_visibility="collapsed"
                 )
                 st.session_state.checklist[ingredient] = checked
             
             with col2:
-                # Ingredient name and quantity on same line
-                formatted_qty = format_quantity(ingredient, quantity)
-                st.markdown(f"<div style='margin-top: -8px;'><strong>{ingredient_name}:</strong> <span style='white-space: nowrap;'>{formatted_qty}</span></div>", unsafe_allow_html=True)
+                # Ingredient name
+                ingredient_name = ingredient.split('(')[0].strip()
+                st.markdown(f"<div style='padding-top: 8px;'><strong>{ingredient_name}</strong></div>", unsafe_allow_html=True)
             
-            # Notes on second row, full width
+            with col3:
+                # Quantity with unit on same line
+                formatted_qty = format_quantity(ingredient, quantity)
+                st.markdown(f"<div style='padding-top: 8px; white-space: nowrap;'>{formatted_qty}</div>", unsafe_allow_html=True)
+            
+            # Row 2: Notes on separate row, full width
             note = st.text_input(
                 f"Note per {ingredient_name}",
                 value=st.session_state.notes.get(ingredient, ""),
@@ -523,15 +513,7 @@ with tab2:
         
         st.divider()
         
-        # Add bottom navigation
-        st.markdown("#### Navigazione")
-        bottom_tabs2 = st.tabs(["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"])
-        with bottom_tabs2[0]:
-            st.success("Torna a Pianifica per modificare i parametri o selezionare altri cocktail")
-        with bottom_tabs2[1]:
-            st.info("Sei già nella Lista Spesa")
-        with bottom_tabs2[2]:
-            st.info("Informazioni sull'applicazione")
+        st.info("💡 Per modificare i parametri o cambiare cocktail, clicca sulla tab '📝 Pianifica' in alto.")
 
 with tab3:
     st.header("ℹ️ Informazioni")
@@ -578,20 +560,6 @@ with tab3:
     
     *Fatto con ❤️ e 🍸 - Cocktail Planner Vicennole*
     """)
-    
-    # Add bottom navigation
-    st.divider()
-    st.markdown("#### Navigazione")
-    bottom_tabs3 = st.tabs(["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"])
-    with bottom_tabs3[0]:
-        st.success("Vai a Pianifica per iniziare la pianificazione")
-    with bottom_tabs3[1]:
-        if st.session_state.calculated:
-            st.success("Vai a Lista Spesa per vedere gli ingredienti calcolati")
-        else:
-            st.warning("Calcola prima gli ingredienti nella sezione Pianifica")
-    with bottom_tabs3[2]:
-        st.info("Sei già nella sezione Info")
 
 # Footer
 st.markdown("---")
