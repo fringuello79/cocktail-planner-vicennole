@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -41,6 +42,16 @@ st.markdown("""
     }
     h3 {
         font-size: clamp(0.8rem, 2.5vw, 1.17rem) !important;
+    }
+    .ingredient-list {
+        overflow-x: auto;
+    }
+    .ingredient-list label {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -115,6 +126,9 @@ RECIPES = {
     "Irish Coffee": {"Whiskey (ml)": 40, "Caffè (ml)": 90, "Zucchero (g)": 10, "Panna (ml)": 30}
 }
 
+TAB_LABELS = ["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"]
+TAB_PIANIFICA, TAB_LISTA_SPESA, TAB_INFO = TAB_LABELS
+
 # Helper function for formatting quantities
 def format_quantity(ingredient, quantity):
     """Format ingredient quantity with appropriate unit."""
@@ -145,6 +159,8 @@ if 'num_people' not in st.session_state:
     st.session_state.num_people = 10
 if 'drinks_per_person' not in st.session_state:
     st.session_state.drinks_per_person = 3
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = TAB_PIANIFICA
 
 # Sidebar for saved sessions
 with st.sidebar:
@@ -182,9 +198,15 @@ with st.sidebar:
                 st.error("Inserisci un nome per la sessione")
 
 # Main content
-tab1, tab2, tab3 = st.tabs(["📝 Pianifica", "🛒 Lista Spesa", "ℹ️ Info"])
+active_tab = st.radio(
+    "Sezione",
+    TAB_LABELS,
+    index=TAB_LABELS.index(st.session_state.active_tab),
+    horizontal=True
+)
+st.session_state.active_tab = active_tab
 
-with tab1:
+if active_tab == TAB_PIANIFICA:
     st.header("1️⃣ Parametri Evento")
     
     col1, col2 = st.columns(2)
@@ -216,24 +238,6 @@ with tab1:
     main_cocktail = None
     main_cocktail_percentage = 50
     
-    if distribution_mode == "Con cocktail principale":
-        col1, col2 = st.columns(2)
-        with col1:
-            all_cocktails = []
-            for category in COCKTAIL_CATALOG.values():
-                all_cocktails.extend(category)
-            main_cocktail = st.selectbox("Cocktail principale:", sorted(all_cocktails))
-            # Add main cocktail to selection set
-            if main_cocktail:
-                st.session_state.selected_cocktails_set.add(main_cocktail)
-        with col2:
-            main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
-    
-    # Display selected cocktails summary - show what's actually in the set
-    if st.session_state.selected_cocktails_set:
-        st.markdown("**Cocktail selezionati:**")
-        st.markdown(", ".join(sorted(st.session_state.selected_cocktails_set)))
-    
     st.divider()
     
     # Cocktail selection by category
@@ -259,6 +263,21 @@ with tab1:
     
     # Store the list of selected cocktails
     st.session_state.selected_cocktails = selected_cocktails
+    
+    if distribution_mode == "Con cocktail principale":
+        if selected_cocktails:
+            col1, col2 = st.columns(2)
+            with col1:
+                main_cocktail = st.selectbox("Cocktail principale:", sorted(selected_cocktails))
+            with col2:
+                main_cocktail_percentage = st.slider("Percentuale cocktail principale:", 30, 70, 50, 5)
+        else:
+            st.info("Seleziona i cocktail per scegliere quello principale.")
+
+    # Display selected cocktails summary - show what's actually selected
+    if st.session_state.selected_cocktails:
+        st.markdown("**Cocktail selezionati:**")
+        st.markdown(", ".join(sorted(st.session_state.selected_cocktails)))
     
     st.divider()
     
@@ -303,13 +322,19 @@ with tab1:
             st.session_state.calculated = True
             st.session_state.distribution = distribution
             
-            st.success("✅ Calcolo completato! Clicca sulla tab '🛒 Lista Spesa' in alto per vedere i risultati.")
+            st.success("✅ Calcolo completato! Usa il pulsante qui sotto o la tab '🛒 Lista Spesa' per vedere i risultati.")
 
-with tab2:
+    if st.session_state.calculated:
+        if st.button("🛒 Vai alla Lista Spesa", use_container_width=True):
+            st.session_state.active_tab = TAB_LISTA_SPESA
+            st.rerun()
+
+if active_tab == TAB_LISTA_SPESA:
     if not st.session_state.calculated:
-        st.warning("⚠️ Calcola prima gli ingredienti nella tab 'Pianifica'")
+        st.warning("⚠️ Calcola prima gli ingredienti nella sezione 'Pianifica'")
     else:
         st.header("🛒 Lista della Spesa")
+        italy_now = datetime.now(ZoneInfo("Europe/Rome"))
         
         # Summary
         col1, col2, col3 = st.columns(3)
@@ -349,29 +374,18 @@ with tab2:
         st.markdown("---")
         
         # Display ingredients with checkboxes and notes
+        st.markdown('<div class="ingredient-list">', unsafe_allow_html=True)
         for ingredient, quantity in sorted(st.session_state.ingredients.items()):
-            # Row 1: Checkbox, ingredient name, and quantity all on same line
-            col1, col2, col3 = st.columns([0.5, 2, 1.5])
+            ingredient_name = ingredient.split('(')[0].strip()
+            formatted_qty = format_quantity(ingredient, quantity)
+            label = f"{ingredient_name} - {formatted_qty}"
             
-            with col1:
-                # Checkbox only
-                checked = st.checkbox(
-                    "",  # Empty label for checkbox only
-                    value=st.session_state.checklist.get(ingredient, False),
-                    key=f"check_{ingredient}",
-                    label_visibility="collapsed"
-                )
-                st.session_state.checklist[ingredient] = checked
-            
-            with col2:
-                # Ingredient name
-                ingredient_name = ingredient.split('(')[0].strip()
-                st.markdown(f"<div style='padding-top: 8px;'><strong>{ingredient_name}</strong></div>", unsafe_allow_html=True)
-            
-            with col3:
-                # Quantity with unit on same line
-                formatted_qty = format_quantity(ingredient, quantity)
-                st.markdown(f"<div style='padding-top: 8px; white-space: nowrap;'>{formatted_qty}</div>", unsafe_allow_html=True)
+            checked = st.checkbox(
+                label,
+                value=st.session_state.checklist.get(ingredient, False),
+                key=f"check_{ingredient}"
+            )
+            st.session_state.checklist[ingredient] = checked
             
             # Row 2: Notes on separate row, full width
             note = st.text_input(
@@ -383,6 +397,7 @@ with tab2:
             )
             st.session_state.notes[ingredient] = note
             st.markdown("---")
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.divider()
         
@@ -417,7 +432,7 @@ with tab2:
             
             # Event info
             info_style = styles['Normal']
-            elements.append(Paragraph(f"<b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}", info_style))
+            elements.append(Paragraph(f"<b>Data:</b> {italy_now.strftime('%d/%m/%Y %H:%M')}", info_style))
             elements.append(Paragraph(f"<b>Persone:</b> {num_people}", info_style))
             elements.append(Paragraph(f"<b>Cocktail a testa:</b> {drinks_per_person}", info_style))
             elements.append(Paragraph(f"<b>Totale cocktail:</b> {total_drinks}", info_style))
@@ -505,7 +520,7 @@ with tab2:
         st.download_button(
             label="📥 Scarica Lista Spesa (PDF)",
             data=pdf_buffer,
-            file_name=f"lista_spesa_vicennole_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            file_name=f"lista_spesa_vicennole_{italy_now.strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf",
             type="primary",
             use_container_width=True
@@ -513,9 +528,9 @@ with tab2:
         
         st.divider()
         
-        st.info("💡 Per modificare i parametri o cambiare cocktail, clicca sulla tab '📝 Pianifica' in alto.")
+        st.info("💡 Per modificare i parametri o cambiare cocktail, torna alla sezione '📝 Pianifica' in alto.")
 
-with tab3:
+if active_tab == TAB_INFO:
     st.header("ℹ️ Informazioni")
     
     st.markdown("""
@@ -543,12 +558,12 @@ with tab3:
     
     st.markdown("""
     #### 🚀 Come Usare:
-    1. Vai alla tab **Pianifica**
+    1. Vai alla sezione **Pianifica**
     2. Inserisci numero di persone e cocktail a testa
     3. Scegli la modalità di distribuzione
     4. Seleziona i cocktail desiderati
     5. Clicca su **Calcola Ingredienti**
-    6. Vai alla tab **Lista Spesa** per vedere i risultati
+    6. Vai alla sezione **Lista Spesa** per vedere i risultati
     7. Usa la checklist interattiva durante la spesa
     8. Aggiungi note se necessario
     9. Scarica il PDF per avere la lista stampata
